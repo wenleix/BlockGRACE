@@ -1,0 +1,54 @@
+% -- DBLP
+\pgfplotstableread{result/personalpr/dynamic.dat}{\tblcompa}
+\begin{tikzpicture}
+  \begin{axis}[
+      title={PPR(Google)},
+      ybar, ymin=0, bar width=6pt,
+      width=0.3\textwidth,
+      height=36mm,
+      xtick=data,
+      xticklabels from table={\tblcompa}{Outer},
+      enlarge x limits={0.5},
+      ylabel={Run time (s)}, ylabel near ticks,
+      legend entries={StaticInner, DynamicInner},
+      legend to name=nameddyinner]
+    \addplot table [x expr=\coordindex+1,y=StaticInner] {\tblcompa};
+    \addplot table [x expr=\coordindex+1,y=DynamicInner] {\tblcompa};
+  \end{axis}
+\end{tikzpicture}%
+\hspace{3mm}
+%
+\pgfplotstableread{result/sssp/dynamic.dat}{\tblcompb}
+\begin{tikzpicture}
+  \begin{axis}[
+      title={SSSP},
+      ybar, ymin=0, bar width=6pt,
+      width=0.3\textwidth,
+      height=36mm,
+      xtick=data,
+      xticklabels from table={\tblcompb}{Outer},
+      enlarge x limits={0.3}]
+    \addplot table [x expr=\coordindex+1,y=StaticInner] {\tblcompb};
+    \addplot table [x expr=\coordindex+1,y=DynamicInner] {\tblcompb};
+  \end{axis}
+\end{tikzpicture}%
+\hspace{3mm}
+%
+\pgfplotstableread{result/eik3d/dynamic.dat}{\tblcompc}
+\begin{tikzpicture}
+  \begin{axis}[
+      title={EtchSim},
+      ybar, ymin=0, bar width=6pt,
+      width=0.3\textwidth,
+      height=36mm,
+      xtick=data,
+      xticklabels from table={\tblcompc}{Outer},
+      enlarge x limits={0.3}]
+    \addplot table [x expr=\coordindex+1,y=StaticInner] {\tblcompc};
+    \addplot table [x expr=\coordindex+1,y=DynamicInner] {\tblcompc};
+  \end{axis}
+\end{tikzpicture}
+%
+\hspace{5mm}
+\raisebox{1cm}{\ref{nameddyinner}}
+

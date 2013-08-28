@@ -1,0 +1,4 @@
+Outer	StaticInner	DynamicInner
+Static	3.89	2.20
+Eager	1.71	1.26
+Prior	1.31	1.00

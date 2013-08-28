@@ -1,0 +1,772 @@
+\section{Experiments}
+\label{sec:exps}
+
+We added block updates to GRACE, a shared-memory parallel graph
+processing framework implemented in
+C++ with pthreads~\cite{Guozhang+13:GRACE}. We did not change its
+%vertex-centric programming interface exposed vertex programming
+vertex-oriented programming model, 
+%but only modified its processing runtime with our 
+but modified the runtime to use the
+block-aware execution engine described in
+Section~\ref{sec:engine}.
+
+\hl{% 
+% DSB:
+%% The original GRACE runtime provides two dynamic scheduling policies:
+%% Eager and Prior, and users can directly use them by simply providing
+%% the application specific priority calculating semantic.  As described
+%% in {\cite{Guozhang+13:GRACE}}, both policies schedule only a subset of
+%% the vertices in each tick.  For the Eager policy, a vertex is
+%% scheduled if its neighbor vertex data changed. For the Prior policy,
+%% only $r \cdot |V|$ of the vertices with the top priorities are
+%% scheduled for update, with $r$ a configurable selection ratio. 
+%
+The original GRACE runtime provides two dynamic scheduling policies:
+Eager and Prior.  Users need only provide an application-specific
+function to compute priorities.  Both policies schedule only a subset
+of the vertices in each tick: for the Eager policy, a vertex is
+scheduled if a neighbor's data has changed; and for the Prior policy,
+only the $r \cdot |V|$ highest-priority vertices are scheduled for
+update, where $r$ is a configurable selection ratio.  Both of them can be
+extended to be executed with the block-oriented computation model as we discussed in 
+Section {\ref{sec:engine}}.}
+
+
+% Although this preliminary
+%implementation is not (yet) a general graph execution engine -- the
+%block size and number of inner iterations we use are tailored to the
+%particular applications we have chosen -- it can already demonstrate
+%our key techniques described in Section~\ref{sec:engine} and hence be
+%used to validate their performance benefits through evaluation with a
+%general class of applications.
+
+%but it demonstrates that our techniques are practical and can greatly
+%increase the end-to-end performance of a general class of graph
+%applications.
+
+%\guozhang{I did not change the following paragraph since they may be
+%largely modified later.}
+
+%\johannes{Maybe add this in later again; seems to be disconnected
+%with the rest of the experiments right now.
+%
+% DSB: Revised
+%% Our experimental evaluation had three goals. 
+%% First, we wanted to validate that our {\BlkModel} can result in better
+%% end-to-end performance compared with the {\VtxModel}.
+%% Second, we wanted to show that this end-to-end performance gain comes
+%% from both better cache behavior and low-overhead scheduling
+%% mechanisms.
+%% Last, we wanted to evaluate the effect of static inner-block
+%% scheduling features on the convergence rate of graph computations.
+
+% DSB: Low-overhead scheduling mechanisms?
+% WX: Yeah sounds confusing, changed.
+Our experimental evaluation has three goals. 
+First, we want to verify that our {\BlkModel} can improve
+end-to-end performance compared with the {\VtxModel}.
+Second, we want to show that this end-to-end performance gain comes
+from both better cache behavior and lower scheduling overhead.
+Last, we want to evaluate the effect of inner-block scheduling policies
+on the convergence rate.
+% WX: saved 1 line.
+% of graph computations.
+
+%\subsection{Example for Block Level Scheduling}
+%\wenleix{Temporarily put it here...}
+
+
+
+
+
+\subsection{Applications}
+\minisec{Personalized PageRank} 
+Our first application, Personalized PageRank (PPR), is 
+% DSB:
+%basically the PageRank algorithm 
+a PageRank computation
+augmented with a personal preference
+vector~\cite{Jeh:2003:SPW}. We randomly generated a sparse
+% DSB:
+%personalized vector 
+personalization vector
+in which all but $1\%$ of the entries are zeros.
+%PageRank values are useful in many social network analysis
+%applications, including link prediction and personalized
+%recommendation, etc.
+%
+% DSB:
+%The classic iterative algorithm
+The standard iterative algorithm
+% coded in GRACE's original per-vertex programming model
+%
+% DSB: The power method usually refers to an eigensolve
+%is a power iteration method 
+is a Richardson iteration for solving a linear system. 
+% DSB: Preconditioner != iteration.
+%% The prevailing vertex-oriented execution in GRACE is a Jacobi or
+%% Gauss-Seidel preconditioner, while our block-aware execution engine
+%% reflects the Block Jacobi or Block Gauss-Seidel
+%% preconditioner~\cite{GolubL96:MatrixComp,Barrett:1994:TSL}.
+%
+The natural algorithm in GRACE is a Jacobi or Gauss-Seidel iteration,
+while the natural approach in our block-aware execution engine is a
+block Jacobi or block Gauss-Seidel
+iteration~\cite{GolubL96:MatrixComp,Barrett:1994:TSL}.
+\hl{%
+% DSB:
+%% The computation is considered converged when all the changes of
+%% vertices in the last iteration is less than a pre-defined threshold,
+%% say $10^{-3}$ in our experiments.
+We declare convergence when all the vertex updates in an iteration
+are less than a tolerance of $10^{-3}$.
+}
+
+\minisec{Single-Source Shortest Path} 
+Our second application is Single-Source Shortest Paths (SSSP), where
+each vertex repeatedly updates its own distance based on the
+neighbors' distances from the source.  GRACE's original
+vertex-oriented execution with eager scheduling corresponds to the
+Bellman-Ford algorithm, and its prioritized scheduling corresponds to
+Dijkstra's algorithm.  We are not aware of any algorithms in the
+literature that correspond to %implementations 
+approaches in our block-aware
+%% execution engine.  Although as pointed out by Adam et al, their block
+%% ideas developed for eiknoal equation are certainly applicable for
+%% shortest path~\cite{Chacon12:TwoScale}.
+excution engine, though there has been work on similar blocked
+algorithms for the related problem of solving the 
+eikonal equation~\cite{Chacon12:TwoScale}.
+%
+\hl{%
+All the variants of this algorithm converge exactly after finitely
+many steps, and we declare convergence when no vertex is updated in an
+iteration.}
+
+%    \begin{equation*}
+%        u.{\rm dist} = \min(u.{\rm dist}, \min_{(u, v) \in E} v.{\rm dist} + \textrm{dist}(u, v))
+%    \end{equation*}
+
+\minisec{Etch Simulation} 
+Our third application is a three-dimensional Etch Simulation (Etch
+Sim)
+% DSB:
+%that is solved by discretized eikonal equations~\cite{Sethian99:Methods}. 
+based on an eikonal equation model~\cite{Sethian99:Methods}. 
+The simulation domain is
+discretized into a 3D grid and represented as a graph.
+%Each vertex
+%%in the graph is a discretized point in the space,
+%%and there is an edge between two vertices if they belong to the same
+%%triangle.
+%is a discretization point, and there is an edge between vertices if
+%they belong to the same triangle.
+%
+% DSB:
+%%The etch front velocity at a vertex can be computed iteratively based
+%%on its neighbors.
+%
+The time at which an etch front passes a vertex can be computed
+iteratively based on when the front reaches its neighbors.
+%
+% DSB:
+% I have to think about this one.
+%
+The vertex-oriented execution engine with eager scheduling in GRACE
+corresponds to the Fast Sweeping method for solving the equations,
+while its original prioritized scheduling corresponds to the Fast
+Marching method. Our block-aware execution engine with block-level
+eager scheduling corresponds to the Fast Sweeping method with Domain
+Decomposition~\cite{SmithBG96:DomianDecomp}, while our block-aware
+execution engine with block-level prioritized scheduling corresponds
+to the Heap-Cell method~\cite{Chacon12:TwoScale}.
+%
+\hl{%
+As with SSSP, all these algorithmic variants converge exactly after
+finitely many steps, and we declare convergence when no vertex is
+updated in an iteration.}
+
+\subsection{Experimental Setup}
+\label{sec:expsetup}
+\minisec{Machine} 
+We ran all our experiments using an 8-core computer with 2 Intel Xeon
+L5335 quad-core processors and 32GB RAM.
+%\ajd{Is this NUMA?  Does it matter?}
+% WX: No it is not NUMA. It is the 32GB jdb machine.
+
+\minisec{Datasets} 
+Table~\ref{table:exp:data} summarizes the datasets we used for our
+applications. For PPR, we used a coauthor graph from DBLP collected in
+Oct 2011, which has about 1 million vertices and 7 million edges.
+%  for social network analysis.
+We also used a web graph released by Google, which contains about
+880,000 vertices and 5 million edges. We omit the running time results on DBLP graph
+due to the space limitations.
+% for information retrieval purposes.
+For Shortest Path, we used a social graph from LiveJournal with about
+5 million vertices and 70 million edges. For the Etch Simulation
+application, we constructed a 3D grid that has $120 \times 120 \times
+120$ vertices.  
+\hl{%
+%% Finally, we used a web graph of the {\tt .uk} domain crawled in 2002
+%% {\cite{dataset:uk02:1}} to demonstrate the performance of our system
+%% under much larger scale. This graph contains about 18 millions
+%% vertices and 300 million edges. 
+Finally, we demonstrate the performance of our system on a larger
+example, a web graph of the {\tt .uk} domain crawled in 2002.
+This graph contains about 18 million vertices and 300 million edges. 
+}
+
+\begin{table}[t!]
+  \begin{center}
+\caption{Dataset Summary}
+%\vspace*{.5ex}
+  \begin{tabular}{| l | c | c |c | l |}
+  \hline
+%  \B{Data Set} & \B{\# Vertices} & \B{\# Edges} &  \B{Partition Time
+%  (s)}  &\B{Application} \\
+  \B{Data Set} & \B{Vertices} & \B{Edges} &  \B{Partition}&\B{Application} \\
+   & $\mathbf{\times 10^3}$ & $\mathbf{\times 10^3}$ & \B{Time (s)} & \\
+  \hline
+%  DBLP & 967,535 & 7,049,736 & 38 & PPR\\
+  DBLP & 968 & 7,050 & 38 & PPR\\
+  \hline
+%  Web-Google & 875,713 & 5,105,039 & 34 & PPR \\
+  Web-Google & 876 & 5,105 & 34 & PPR \\
+  \hline
+%  LiveJounal & 4,847,571 & 68,993,773 & 659 & SSSP \\
+  LiveJournal & 4,848 & 68,994 & 659 & SSSP \\
+  \hline
+%  3D Grid & 1,728,000 & 9,858,192 &  N/A & Etch Sim \\
+  3D Grid & 1,728 & 9,858 &  N/A & Etch Sim \\
+  \hline
+  \hline
+%  UK02 & 18,520,486 &  298,113,762 & 2097 & PPR \\
+% WX: 2097s is the time of paritioning into blocks of size 100, changed to the time of partitioning into blocks of size 400.
+  UK02 & 18,520 &  298,114 & 1034 & PPR \\
+  \hline
+  \end{tabular}
+\label{table:exp:data} \vspace*{-1ex}
+\end{center}
+\end{table}
+
+%\subsection{Microbenchmark}
+%\wenleix{A subsection is probably not necessary\ldots}
+
+\minisec{\hl{Partition Time}}
+% DSB: Kept part of this here, moved part to the experiment section.
+%
+%% The Etch Simulation application already has a natural grid structure,
+%% and thus we considered sub-grids of size $b \times b \times b$ as
+%% blocks, while for other two applications we used METIS to partition
+%% the graph data~\cite{KarypisAKS97:METIS}.  The best choice of the
+%% block size depends on many factors, including application and data
+%% characteristics, partition mechanism, scheduling method, and machine
+%% specifications.  We empirically determined the block size for this
+%% paper, leaving automatic selection of the block size for future work.
+%% % DSB:
+%% %Figures~\ref{fig:pagerankBlockSize_dblp},
+%% %\ref{fig:ssspBlockSize}, and \ref{fig:eik3dBlockSize} demonstrate 
+%% The first column of Figure~\ref{fig:timingGrid} demonstrates the
+%% running times of the applications for different block sizes. The
+%% figures show that block sizes between 100 and 400 perform well for our
+%% applications. Thus, for the remainder of our experiments we set the
+%% block size to be 100 vertices for PPR and SSSP, and we assigned a $5
+%% \times 5 \times 5$ sub-grid as a block tor the Etch Simulation,
+%% resulting in a block size of 125 vertices.
+%
+%% We report the time to partition the graph into blocks with size $100$
+%% using serial METIS in Table~{\ref{table:exp:data}}.  Since this paper
+%% mainly focuses on problems where the main computation will be run many
+%% times, the partitioning work will be amortized.  Also, since our block
+%% size is relatively small, other bottom-up partitioning algorithm would
+%% probably have better performance.~{\cite{}} as METIS is based on
+%% multilevel recursive partitioning schemes.
+%
+For the DBLP, Google, and LiveJournal graphs, we used
+METIS~\cite{KarypisAKS97:METIS} to partition the graph into blocks of
+around 100.  For the {\tt .uk} web graph, we partitioned into blocks
+of size 400.  We report the partitioning times in
+Table~{\ref{table:exp:data}}.  While partitioning is itself expensive,
+our focus is problems where the partitioning work will be amortized
+over many executions of the main computation.  Given that relatively
+small blocks appear useful in practice, recently-developed fast
+algorithms for bottom-up graph
+clustering~\cite{Spielman13:LocalCluster} may perform better on these
+problems.
+
+\minisec{\hl{Scheduling}}
+As mentioned in Section~\ref{sec:engine}, static scheduling and 
+two common dynamic scheduling policies (Eager and Prior) are 
+%implemented in the GRACE runtime and can be directly used by users.
+implemented in the GRACE runtime.
+To use Prior scheduling, users must also provide 
+the application-specific priority calculation.
+For the Eager scheduling policy, the scheduling priority for a vertex is a boolean value indicating whether any neighboring vertex data has changed.
+Thus we use boolean \emph{OR} as the block priority aggregation, which means a block would be scheduled 
+if its boundary data has changed, or its last update did not run to convergence. 
+For the Prior scheduling policy, each vertex holds a float value to indicate its priority.
+The priority aggregation used for SSSP and EtchSim is \emph{MIN} in our experiments, 
+while the aggregation used for PPR is \emph{SUM}. Notice that since we use \emph{MIN}
+for SSSP, it is eligible for the direct block-priority update
+optimization 
+%we mentioned in 
+described in
+Section~\ref{sec:engine}.
+
+%, as 
+%\textsf{OnNbrChange} can quantify the exact contribution to the block-priority 
+%through its update.
+
+\subsection{Results}
+
+\begin{figure*}[ht!]
+\input{figs/jdb32G/tikz/time_details.tex}
+\caption{Timing details for five application scenarios.}
+\label{fig:timingGrid}
+\end{figure*}
+
+
+\begin{figure*}[ht]
+  \input{figs/jdb32G/tikz/dynamic_inner.tex}
+  \caption{Effect of dynamic inner scheduling with different block level scheduling policies.}
+  \label{fig:dynamicinner}
+\end{figure*}
+
+\begin{figure*}[ht]
+  \input{figs/jdb/tikz/compare_glab.tex}
+  \caption{Effect of scheduling policies in GraphLab (with vertex or
+    edge consistency) and in GRACE.}
+  \label{fig:graphlabCompare}
+\end{figure*}
+
+
+
+\subsubsection{Block Size} 
+The Etch Simulation application has a natural grid structure, and
+we used sub-grids of size $b \times b \times b$ as blocks, while for
+other applications we used METIS to partition the graph into blocks
+of roughly equal size.
+%
+% DSB:
+%% The best choice of the block size depends on many factors, including
+%% application and data characteristics, partitioning mechanism,
+%% scheduling method, and machine specifications.
+%
+The best block size depends on many factors, including characteristics
+of the machine, characteristics of the data and application, how the
+graph is partitioned, and how block updates are scheduled.
+%
+% DSB:
+%We empirically determined the block size for this
+%paper, leaving automatic selection of the block size for future work.
+%
+In our applications, the performance was only moderately sensitive to
+the block size, as we illustrate in the first column of
+Figure~\ref{fig:timingGrid}.  Because block sizes between 100 and 400
+performed well for these examples, we chose a default block size of
+100 for the PPR and SSSP test cases, and used a $5 \times 5 \times 5$
+sub-grid as a block for the Etch Simulation.
+
+%% In our experiments, we chose the block sizes empirically.
+%% The first column of Figure~\ref{fig:timingGrid} demonstrates the
+%% running times of the applications for different block sizes. The
+%% figures show that block sizes between 100 and 400 perform well for our
+%% applications. Thus, for the remainder of our experiments we set the
+%% block size to be 100 vertices for PPR and SSSP, and we assigned a $5
+%% \times 5 \times 5$ sub-grid as a block for the Etch Simulation,
+%% resulting in a block size of 125 vertices.
+
+\subsubsection{End-to-End Performance}
+To see how the {\BlkModel} performs compared to the {\VtxModel}, we
+ran each of our example applications under different scheduling
+polices.  The mean run times for the scheduling policies are shown 
+in the second column of Figure~\ref{fig:timingGrid}; the bars
+labeled Vertex and BlockCvg correspond respectively to applying this
+schedule to individual vertex updates and to block updates.
+%
+% DSB:
+%We made 200 individual runs for the
+%PPR application and 100 individual runs for the other two
+%applications. 
+%
+% DSB: Actually, I'm inclined to leave out the number of sims...
+%The averages are taken over 200 individual runs for the PPR
+%application, 100 runs for the SSSP, and 1000 runs for the etch simulation.
+%
+Here when a block is scheduled, 
+% DSB:
+%each of its vertices gets updated repeatedly 
+%until the block data converges. 
+each vertex is repeatedly updated until the block data converges.
+We omit the time for the static scheduling policy for the Etch
+Simulation application from
+% DSB:
+%Figure \ref{fig:eik3dGeneral} 
+Figure~\ref{fig:timingGrid}.
+%
+While a well-chosen static schedule leads to very fast convergence for
+this problem~\cite{Zhao07:ParallelSweep}, the naive static schedule in
+our current implementation takes much longer than the two dynamic
+scheduling polices: 15.9s for the vertex model and about 3.6s for the block model.
+
+%We observed that for a given application and dataset, 
+In our experiments,
+the best
+scheduling policy under the vertex model is also the best scheduling
+policy under the block model. More specifically, for the SSSP and Etch
+Simulation applications, the best scheduling policy is the prioritized
+% DSB:
+%policy, since it significantly accelerates the convergence.  
+policy.  
+For the PPR application, the best scheduling policy depends
+on the dataset characteristics.  
+%
+%% On the Google graph, dynamic scheduling policies have better
+%% performance since they reduce the number of updates before
+%% convergence. However, on the DBLP graph, the static scheduling policy
+%% outperforms the dynamic ones.  This is because the DBLP graph has a
+%% much larger clustering coefficient than the Google graph.
+%
+On the Google and UK graph, dynamic scheduling performs better than static
+scheduling, while on the DBLP graph, the static scheduling policy
+performs best.  This is because the DBLP graph has a much larger
+clustering coefficient than the Google and UK graph.
+%
+% In other words, vertices in the DBLP graph are more tend to cluster together.
+Thus the computational savings due to dynamic scheduling polices are
+smaller and are outweighed by the high overhead of the dynamic
+schedulers themselves.  Moreover, dynamic scheduling policies tend to
+schedule vertices with higher degrees in the PPR application, which
+makes the vertex updates more expensive.
+%such phenomenon has also been observed in \cite{Guozhang+13:GRACE}.
+
+In general, 
+%we noticed that the running time 
+%for each scheduling policy for the block model is significantly
+%smaller than the corresponding scheduling policy for the vertex
+%model.
+the blocked computation outperforms the corresponding vertex-centric
+computation under each scheduling policy.
+In the PPR application, our 
+%proposed block model has a speedup factor of 
+%$3.9\times$ -- $5.0\times$ compared to the vertex model 
+block engine runs
+$3.5\times$ -- $7.0\times$ faster than the vertex-centric computation
+for the best scheduling policy.  
+For the SSSP and Etch Simulation applications, 
+%we roughly reduces the overall running time by half.
+we cut the run time roughly in half.
+%\ajd{fill this in!}
+%consider the best scheduler for each application, our proposed block
+%computation model has a speedup factor of 2.1x - 3.4x for different
+%applications.
+%
+% DSB: Does this really contribute to the discussion?  If so, I think
+%      it belongs at the end of the paragraph...
+%% This demonstrates that the better cache performance and reduced
+%% isolation overhead introduced by our novel {\BlkModel} can
+%% significantly accelerate many real life graph applications and save a
+%% large amount of overall running time.
+%
+Also, we observed that the
+{\BlkModel} is more robust to the ``wrong choice'' of scheduling
+policy.  For example, the vertex-centric prioritized scheduler is 
+%more than two times slower than the 
+%more than twices as slow as the
+about $2.5\times$ slower than 
+the vertex-centric static scheduler,
+% due to the reason we mentioned before.
+but the block prioritized scheduler is about $60\%$ slower than
+the block static scheduler.  This is because by 
+% DSB:
+%%making the scheduling decision at a block level 
+%%we significantly reduce the scheduling overhead. 
+scheduling blocks rather than vertices, we significantly reduce the 
+total scheduling overhead.
+% and makes it no longer the performance bottleneck.  Moreover, the
+%issue of more expensive vertex updates is also relieved by updating
+%the whole block instead of just one vertex.
+
+%\subsubsection{Breakdown Analysis}
+\subsubsection{Analysis of Block Processing Strategies}
+
+Recall that the {\BlkModel} has three main benefits: (1) It has a
+better memory access pattern due to visiting vertices in the same
+block together. (2) It has reduced overhead for isolation due to
+providing consistent snapshots at block level instead of at vertex
+level. (3) It can achieve better cache performance by doing multiple
+iterations in a block.  To understand how each of these benefits
+contributes to improved end-to-end performance, we analyzed
+% DSB:
+%\emph{single} run for each application and added 
+the run time for each application in
+two execution models
+that are hybrids of the pure {\VtxModel} and the pure {\BlkModel} used
+in general performance comparison.  We show the running times of all
+these schedulers in
+the second column of Figure~\ref{fig:timingGrid}.
+% DSB: Edited figures to show mean run times
+%\hl{Notice these figures have different y-axis with Figures~{\ref{fig:pagerankGeneral_google}},
+%{\ref{fig:pagerankGeneral_dblp}}, {\ref{fig:ssspGeneral}}, and
+%{\ref{fig:eik3dGeneral}} because they have different number of runs.}
+%\wenleix{This targets the comment R1.D8, but do we really need it?}
+
+To understand how the memory access pattern affects performance, we
+used the cache aware {\VtxModel} (VertexCA) introduced in Section
+\ref{sec:vertexModel}.  Recall this execution model still updates one
+vertex at a time, and makes scheduling decisions at the vertex
+level. However, it is aware of the graph partitioning and updates the
+vertices in block order; i.e., it updates all the scheduled vertices
+of a given block before proceeding to the next block. By doing so it
+achieves better temporal locality.  We also report the running time
+for two different inner-block schedulers: the simple block model,
+which just sweeps all the vertices once (BlockS), and the convergent
+block model, which iteratively updates the block data until it
+converges (BlockCvg).  Note that the major difference between the
+simple block model and the cache-aware vertex model is the isolation
+and scheduling overhead.  GRACE uses snapshot isolation; thus, before
+updating a vertex or block the engine is responsible for choosing the
+right version of the data to be passed to the update function.  By
+making this decision at the block level rather than at the vertex
+level, the average overhead is greatly reduced.  Finally, the
+difference between the simple block model and the convergent block
+model is that the CPU is able to do more work on data residing in the
+cache when the memory is saturated.
+
+With the cache-aware vertex model, we observed a significant reduction
+in running time of the PPR and SSSP applications, achieving savings of
+$36\%$ to $52\%$ on the best scheduling policy except for the UK graph. 
+\hl{We observed much more saving on the larger UK graph, in which the
+cache-aware vertex model is more than 5 times faster than the vertex model. }
+In contrast, the cache-aware vertex model only saves about $10\%$ of the time for the
+prioritized policy in Etch Simulation application. This is because the
+grid-structure graph used in the Etch Simulation already has a regular
+memory access pattern, while the memory access pattern for arbitrary
+graphs could be quite random.
+
+Switching from the cache-aware vertex model to the convergent block
+model, we save about half the time 
+%of PPR on DBLP and Google graph, as well 
+for PPR on the DBLP and Google graphs.  We see similar savings for
+the Etch Simulation application, but for
+different reasons.  For PPR, performance improves from the cache-aware
+vertex model to the simple block model and finally to the convergent
+block model.  However, for Etch Simulation, the simple block model has
+worse performance than the cache-aware vertex model, while the
+convergent block model has much better performance.  This is because
+scheduling at the block level 
+%updates some vertices that are not so
+%eager to be updated. Doing a sweep in the scheduled block 
+wastes many
+vertex updates in this case. 
+\hl{For PPR on the UK graph, switching from VertexCA to BlockCvg reduces the running time by about
+$20\%$ for the eager scheduling policy, which is not as significant as PPR on other two 
+datasets. This is because running until convergence inside a block
+gives only a slight improvement. As we will see in
+Section~{\ref{sec:ExpInnerBlock}}, 
+%an inexact solve inside block would help
+an inexact block solve improves
+the overall running time on this dataset.  }
+For SSSP, BlockS has roughly the same running time as VertexCA, while BlockCvg
+only improves the performance by $10\%$.
+%the running time is reduced by
+%$22\%$ for the prioritized scheduling policy, 
+%and it fails to benefit from the convergent block model.  
+This is because social networks
+obeying a power-law are hard to partition -- in the partitions we used
+in our experiments, more than half the edges are cutting edges.  Thus
+updating the block until convergence contributes little to achieving
+global convergence.  
+%WX
+%Overlapping partitions might help this problem; we leave this as future work.
+\hl{Researchers have shown that overlapping partitions would help this problem {\cite{AndersenGM:2012}}, and some recent emergent graph processing
+frameworks such as PowerGraph {\cite{Gonzalez+12:PowerGraph}} have designed 
+their programming interfaces to naturally support computation on overlapping partitioning. 
+We expect this block computation model would have more benefits on 
+social graph computations for these frameworks.}
+On the other hand, we observed that %applying 
+the direct block-priority update optimization to BlockCvg 
+reduces the running time from 12.3 seconds to 10.5 seconds, and makes BlockCvg
+$22\%$ faster than VertexCA.
+%As we checked the number of total vertex updates, we found this is
+%because for shortest-path like applications, blindly updating the
+%vertices in a block wastes too many vertex updates, which compensates
+%the benefits of cache performance.  And a FIFO-based inner block
+%scheduler might have better performance.
+
+%\wenleix{Maybe need some unified name. Vertex Scheduler, Cache-Aware
+%Vertex Scheduler, Simple Block Scheduler, Convergent Block Scheduler?
+%And use ``Scheduling Policy'' for Static, Eager and Prior? }
+
+\subsubsection{Effect of Inner-Block Scheduling}
+\label{sec:ExpInnerBlock}
+In this subsection we focus on the effect of inner-block
+scheduling. In particular, we have seen that 
+%% %in many scenarios
+%% scheduling individual vertices' update procedures within a block
+%% multiple times 
+%% %can improves 
+%% often improves
+%% performance. 
+updating each vertex multiple times in a single block update
+often improves performance.
+%
+For example, if the boundary
+data of the block has already converged, then iterating over the
+vertices until the block data converges is a natural way to define the
+block update function.  However, 
+%it could be a poor inner-block scheduling policy 
+this could be a poor choice
+if the boundary data of the block is incorrect.  
+%A tradeoff here 
+The tradeoff
+is that doing more updates inside the block leads to
+better cache performance, but it could waste CPU time if the boundary
+data has not converged.  As we mentioned in
+Section~\ref{sec:blockModel}, we can set a maximum number of inner
+iterations $I_{\theta}$, and terminate the block update after
+$I_{\theta}$ sweeps even if the block has not yet converged.
+
+To understand this tradeoff, we plot running time against the number
+of inner-block iterations $I_{\theta}$ in
+% DSB:
+%Figures~\ref{fig:pagerankBreakdown_google},
+%\ref{fig:pagerankBreakdown_dblp}, \ref{fig:ssspBreakdown}, and
+%\ref{fig:eik3dBreakdown}.
+the third column of Figure~\ref{fig:timingGrid}.  For PPR, the best
+performance occurs around $I_{\theta} = 3$, and after that the running
+time remains the same as running until convergence for both DBLP and Google datasets.
+\hl{However, for the UK dataset, further increasing $I_{\theta}$ 
+%slows down the overall running 
+increases the overall run
+time significantly. Specifically, running until convergence
+is $24\%$ slower than setting $I_{\theta}=3$. }
+On the other hand, for the Etch Simulation application, more inner iterations
+always yields better performance.  We believe that besides the
+application characteristics, the higher diameter of the graph also
+favors more inner iterations because they help information propagate
+across the graph faster.  
+%For the applications and datasets we used,
+%running until convergence inside a block is {\em always} the best
+%choice.  It would be interesting to see if this is also true for other
+%naturally occurring graph applications.
+
+\hl{
+% DSB:
+%On the other hand, dynamic scheduling could also be used inside block
+Dynamic scheduling may also be used inside blocks
+to reduce the number of updates, at the cost of paying 
+% DSB:
+%scheduling overhead such as maintaining the scheduling bit.  
+some extra scheduling overhead.
+To study this tradeoff, 
+%the running time for static inner scheduling
+%and dynamic inner scheduling is presented in
+we compare the run times for static and dynamic inner
+scheduling in
+% WX
+%the third column of Figure {\ref{fig:timingGrid}}.  
+Figure {\ref{fig:dynamicinner}}.
+%Although for all three applications, the number of vertex updates
+%reduced by using dynamic inner scheduling,
+%we observed it does not result in better
+%performance for application PageRank and SSSP under the best
+%scheduling policy.  
+For all three applications, dynamic inner scheduling reduced the
+number of vertex updates; nonetheless, static scheduling
+outperformed dynamic scheduling for the SSSP problem,
+%For this application, 
+because the computational saving is outweighed by the scheduling overhead. 
+For PPR, we observed that dynamic inner scheduling is slightly faster than the static inner scheduling on Google graph, while it is slower than the static inner scheduling on the DBLP graph.
+%For PPR on Google graph, we observed that dynamic inner scheduling is about $14\%$ faster than the static inner scheduling while the dynamic inner scheduling runs slower on the DBLP graph.
+However, dynamic inner scheduling yields nearly $25\%$ improvement 
+in the Etch Simulation application,
+% by adopting the dynamic inner scheduling policy,
+as the vertex update function is slightly 
+computationally heavier than the previous two applications and the
+convergence for this problem is particularly sensitive to update order.  }
+
+
+\subsubsection{Comparison with GraphLab}
+
+To evaluate the performance of the vertex execution model implemented
+in GRACE, we compare the running time of GRACE with GraphLab on all
+three applications under different scheduling policies.
+% WX: Add the explanation for GraphLab's vertex/edge consistency.
+Recall that GraphLab provides two different isolation levels for concurrent vertex updates: 
+vertex consistency, which allows two neighboring vertices to update simultaneously, 
+and edge consistency, which guarantees serializability of updates. 
+As pointed out by the 
+%GraphLab paper, 
+GraphLab authors,
+for some graph applications vertex consistency 
+can produce inaccurate results, as it does not avoid read/write conflicts on neighboring vertices
+\cite{Low+10:GraphLab, Low+12:DistGraphLab}.
+We report GraphLab's run time under both isolation levels in 
+%one of the state-of-the-art graph processing frameworks.
+%The comparisons are shown in 
+% DSB:
+%Figure \ref{fig:pagerankCompare_google}, \ref{fig:ssspCompare} 
+%and \ref{fig:eik3dCompare}.
+Figure~\ref{fig:graphlabCompare}.
+
+For Eager and Prior scheduling, GRACE's run time is between that
+of GraphLab with vertex consistency and GraphLab with edge consistency.
+%running time of GraphLab's vertex consistency and GraphLab's edge
+%consistency, 
+This is because the isolation level used by GRACE -- snapshot isolation -- is between GraphLab's vertex consistency and GraphLab's edge consistency. 
+The only exception is the Eager
+scheduling for eikonal equation, in which GRACE is faster than 
+%both GraphLab's vertex/edge consistency. 
+GraphLab whether vertex or edge consistency is used.
+This is because the corresponding
+scheduler in GraphLab 
+%has more than twice of the updates than GRACE.
+executes more than twice as many updates as GRACE.
+
+%\david{I'm not sure I understand the first sentence?}
+%WX: explain a bit, does that make sense?
+For Prior scheduling, GRACE is always faster than GraphLab, because it
+makes the scheduling decision by iterations rather than by
+%vertex, as reported in original GRACE paper. 
+vertex~\cite{Guozhang+13:GRACE}.
+Thus we expect the block model 
+%would benefit more to GraphLab since the scheduling overhead is
+%higher.
+could benefit GraphLab even more than GRACE, since GraphLab has
+higher scheduling overhead.
+
+%\wenleix{Explain Vertex Consistency / Edge Consistency. Maybe also point out Eager corresponds to multiqueue\_fifo/sweep and Prior corresponds to multiqueue\_priority in GraphLab?}
+
+%\subsubsection{Scalabilitiy}
+%%\wenleix{Maybe use this data set to replace Google dataset?}
+%To see how the block model performs on large-scale graph, we also run experiments on another much larger web graph, and 
+%report the results in the fifth row of Figure \ref{fig:timingGrid}. Similar to the Google graph, dynamic scheduling policies
+%outperforms the static scheduling policies. The running time for vertex model is omitted here since it is much slower than 
+%the block model. Actually, for the best scheduling policy on this dataset, the vertex model is 4.6x slower than the VertexCA, results
+%in 7.0x slower than BlockCvg. Yet switching from VerteCA to BlockCvg the running time is only reduced by $33\%$, which is not 
+%as significant as PPR on other two datasets, and running until convergence inside block only gives slight improvement. 
+%In this case inexact solve helps the overall running time, as we observed that the best performance is archieved when $I_\theta = 3$ 
+%for the best scheduling policy, and
+%further increasing $I_{\theta}$ slows down the overal running time significantly. Specifically, running until convergence
+%is $24\%$ slower than setting $I_{\theta}=3$.
+
+%\begin{itemize}
+%    \item Experiments is run on another 32G machine.
+%    \item From VertexCA to Block, it only saves about $30\%$ of the time. Similar to the experiments on 
+%        LiveJournal Graph, the reason is because there are too many cutting edges with BlockSize=100 (about $60\%$.
+%    \item  However increasing the block size significantly reduce the cutting edge for this graph.
+%        For example, with block size set to 400, there are about $38\%$ cutting edges. 
+%        However we didn't observe a reduction when incresing the block size, because 
+%        as the block size increases, running until convergence might be expensive. 
+%    \item In this case inexact solve helps the overall running time. 
+%        The running times for eager scheduling with respect to the number of maximum inner iterations $I_\theta$ are presented.
+%        We observed that the best performance is archieved when $I_\theta = 3$ for block size 400.
+%        %With $I_\theta = 3$, the performances under block size 400 is $20\%$ faster than the performance under block size 100.
+%        However, the running time under block size 400 increased significantly when increasing $I_\theta$.
+%    \item This dataset demonstrate the flexibility of block execution model by different combinations of outer/inner scheduling and block size. 
+%\end{itemize}
+
+

@@ -1,0 +1,315 @@
+#
+# MakefileCommon
+#
+# ajd June 28, 2011 8:35:42 AM EDT
+#
+#
+# expects: PKGNAME CUDB_PREFIX
+#
+# sets: OSNAME
+#
+# TODO: regression tests (make check)
+#
+
+ifndef PKGNAME
+	$(error must define PKGNAME in outer Makefile)
+endif
+
+ifndef CUDB_PREFIX
+  $(info CUDB_PREFIX undefined -- using /usr/local)
+  CUDB_PREFIX := /usr/local
+endif
+ifeq "$(CUDB_PREFIX)" ""
+	$(error CUDB_PREFIX is empty)
+endif
+
+
+
+################################################################################
+
+
+.SUFFIXES:
+
+SHELL := /bin/sh
+INSTALL := $(shell which install)
+
+#
+# Directory tree definitions ...
+#
+
+BIN = bin
+IBIN = ibin
+LIB = lib
+SRC = src
+OBJ = obj
+INCLUDE = include
+DOC = doc
+MAN = man
+SCRIPTS = scripts
+
+#
+# installation directories ...
+#
+
+# prefix is either specified explicitly, or by CUDB_PREFIX
+ifndef prefix
+	ifdef CUDB_PREFIX
+		prefix := $(CUDB_PREFIX)
+	else
+		$(error this cannot happen)
+################################################################################
+		prefix := /usr/local
+	endif
+endif
+
+exec_prefix := $(prefix)
+
+bindir := $(exec_prefix)/bin
+libexecdir := $(exec_prefix)/libexec
+libdir := $(exec_prefix)/lib
+
+datarootdir := $(prefix)/share
+
+includedir := $(prefix)/include
+
+docdir := $(datarootdir)/doc/$(PKGNAME)
+
+mandir := $(datarootdir)/man
+man1dir := $(mandir)/man1
+man3dir := $(mandir)/man3
+man5dir := $(mandir)/man5
+
+#
+# Platform-dependent setup
+#
+
+OSNAME := $(shell uname -s)
+
+OSX_NAME = Darwin
+LINUX_NAME = Linux
+
+ifeq "$(OSNAME)" "linux"
+$(info Changing OSNAME from $(OSNAME) to $(LINUX_NAME))
+override OSNAME := $(LINUX_NAME)
+endif
+
+ifeq "$(OSNAME)" "$(OSX_NAME)"
+
+.SUFFIXES: .c .cpp .h .hpp .o .exec .dylib
+LIB_EXT = dylib
+CMD_EXT = exec
+OBJ_EXT = o
+DEPS_EXT = d
+
+CPPFLAGS =
+
+LIB_CXXFLAGS = -fno-common
+CMD_CXXFLAGS =
+
+LIB_LDFLAGS = -dynamiclib
+CMD_LDFLAGS =
+LDFLAGS =
+
+else ifeq "$(OSNAME)" "$(LINUX_NAME)"
+
+.SUFFIXES: .c .cpp .h .hpp .o .exec .so
+LIB_EXT = so
+CMD_EXT = exec
+OBJ_EXT = o
+DEPS_EXT = d
+
+CPPFLAGS =
+
+LIB_CXXFLAGS = -fPIC -lrt
+CMD_CXXFLAGS =
+
+LIB_LDFLAGS = -shared
+CMD_LDFLAGS =
+LDFLAGS =
+
+else
+
+$(error unknown OSNAME $(OSNAME))
+
+endif
+
+# make sure CUDB_PREFIX is set
+ifeq "$(CUDB_PREFIX)" ""
+  CUDB_PREFIX = /usr/local
+endif
+
+# make sure CUDB_INCLUDES and CUDB_LIBRARIES are set
+ifeq "$(CUDB_INCLUDES)" ""
+  CUDB_INCLUDES = -I$(CUDB_PREFIX)/include
+endif
+ifeq "$(CUDB_LIBRARIES)" ""
+  CUDB_LIBRARIES = -L$(CUDB_PREFIX)/lib
+endif
+
+
+#
+# Group definition procs ...
+#
+
+# [srcdir GRP_SRCDIR GRP_OBJDIR GRP_OBJS4LIB GRP_OBJS4CMD GRP_DEPS] <- GrpBEGIN ( srcdir )
+
+define GrpBEGIN
+srcdir := $(1)
+GRP_SRCDIR := $(1)
+GRP_OBJDIR := $$(patsubst XXX$(SRC)%,$(OBJ)%,XXX$(1))
+GRP_OBJS4LIB :=
+GRP_OBJS4CMD :=
+GRP_DEPS :=
+endef
+
+# [GRP_OBJS4LIB GRP_DEPS] <- GrpADD4LIB ( names )
+
+define GrpADD4LIB
+TMP_SOURCES := $$(patsubst %,$(GRP_SRCDIR)/%.cpp,$(1))
+TMP_OBJS := $$(patsubst $(SRC)/%.cpp,$(OBJ)/%.$(OBJ_EXT),$$(TMP_SOURCES))
+GRP_OBJS4LIB += $$(TMP_OBJS)
+TMP_DEPS := $$(patsubst %.$(OBJ_EXT),%.$(DEPS_EXT),$$(TMP_OBJS))
+GRP_DEPS += $$(TMP_DEPS)
+endef
+
+# [GRP_OBJS4CMD GRP_DEPS] <- GrpADD4CMD ( names )
+
+define GrpADD4CMD
+TMP_SOURCES := $$(patsubst %,$(GRP_SRCDIR)/%.cpp,$(1))
+TMP_OBJS := $$(patsubst $(SRC)/%.cpp,$(OBJ)/%.$(OBJ_EXT),$$(TMP_SOURCES))
+GRP_OBJS4CMD += $$(TMP_OBJS)
+TMP_DEPS := $$(patsubst %.$(OBJ_EXT),%.$(DEPS_EXT),$$(TMP_OBJS))
+GRP_DEPS += $$(TMP_DEPS)
+endef
+
+# [ ] <- GrpEND ( )
+
+define GrpEND
+$(foreach x,$(GRP_DEPS),
+$(x): $(patsubst $(OBJ)/%.$(DEPS_EXT),$(SRC)/%.cpp,$x) cleaned
+	$(SHELL) -ec '$(CXX) -MM $(CPPFLAGS) $(DEFFLAGS) -I ./include $(CUDB_INCLUDES) $$< | sed "s#.*:#$$@ $$(patsubst %.$(DEPS_EXT),%.$(OBJ_EXT),$$@):#g" > $$@ '
+
+)
+
+include $(GRP_DEPS)
+
+$(foreach x,$(GRP_OBJS4LIB),
+$(x): $(patsubst $(OBJ)/%.$(OBJ_EXT),$(SRC)/%.cpp,$x)
+	$(CXX) $(CPPFLAGS) $(DEFFLAGS) -I ./include $(CUDB_INCLUDES) -c $(LIB_CXXFLAGS) $(CXXFLAGS) -o $$@ $$<
+
+)
+
+$(foreach x,$(GRP_OBJS4CMD),
+$(x): $(patsubst $(OBJ)/%.$(OBJ_EXT),$(SRC)/%.cpp,$x)
+	$(CXX) $(CPPFLAGS) $(DEFFLAGS) -I ./include $(CUDB_INCLUDES) -c $(CMD_CXXFLAGS) $(CXXFLAGS) -o $$@ $$<
+
+)
+
+endef
+
+
+# [ ] <- GrpMKLIB ( libname linklibs )
+
+define GrpMKLIB
+ifeq "$(OSNAME)" "$(OSX_NAME)"
+$(LIB)/lib$(1).$(LIB_EXT): $(GRP_OBJS4LIB)
+	$(CXX) $(LIB_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIB_LDFLAGS) -L$(LIB) $(CUDB_LIBRARIES) $(2) -o $$@ $$^
+else ifeq "$(OSNAME)" "$(LINUX_NAME)"
+$(LIB)/lib$(1).$(LIB_EXT): $(GRP_OBJS4LIB)
+	$(CXX) $(LIB_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(LIB_LDFLAGS) -L$(LIB) $(CUDB_LIBRARIES) -Wl,-soname,$$(@F) $(2) -o $$@ $$^
+endif
+
+endef
+
+# [ ] <- GrpMKCMD ( cmdname linklibs names )
+define GrpMKCMD
+TMP_SOURCES := $$(patsubst %,$(GRP_SRCDIR)/%.cpp,$(3))
+TMP_OBJS := $$(patsubst $(SRC)/%.cpp,$(OBJ)/%.$(OBJ_EXT),$$(TMP_SOURCES))
+ifeq "$(OSNAME)" "$(OSX_NAME)"
+$(BIN)/$(1).$(CMD_EXT): $$(TMP_OBJS)
+	$(CXX) $(CMD_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(CMD_LDFLAGS) -L$(LIB) $(CUDB_LIBRARIES) $(2) -o $$@ $$^
+else ifeq "$(OSNAME)" "$(LINUX_NAME)"
+$(BIN)/$(1).$(CMD_EXT): $$(TMP_OBJS)
+	$(CXX) $(CMD_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(CMD_LDFLAGS) -o $$@ $$^ -L$(LIB) $(CUDB_LIBRARIES) $(2)
+endif
+
+endef
+
+# [ ] <- GrpMKICMD ( cmdname linklibs names )
+define GrpMKICMD
+TMP_SOURCES := $$(patsubst %,$(GRP_SRCDIR)/%.cpp,$(3))
+TMP_OBJS := $$(patsubst $(SRC)/%.cpp,$(OBJ)/%.$(OBJ_EXT),$$(TMP_SOURCES))
+ifeq "$(OSNAME)" "$(OSX_NAME)"
+$(IBIN)/$(1).$(CMD_EXT): $$(TMP_OBJS)
+	$(CXX) $(CMD_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(CMD_LDFLAGS) -L$(LIB) $(CUDB_LIBRARIES) $(2) -o $$@ $$^
+else ifeq "$(OSNAME)" "$(LINUX_NAME)"
+$(IBIN)/$(1).$(CMD_EXT): $$(TMP_OBJS)
+	$(CXX) $(CMD_CXXFLAGS) $(CXXFLAGS) $(LDFLAGS) $(CMD_LDFLAGS) -L$(LIB) $(CUDB_LIBRARIES) $(2) -o $$@ $$^
+endif
+
+endef
+
+# [ ] <- GrpMKXOBJ ( names )
+define GrpMKXOBJ
+TMP_SOURCES := $$(patsubst %,$(GRP_SRCDIR)/%.cpp,$(1))
+TMP_OBJS := $$(patsubst $(SRC)/%.cpp,$(OBJ)/%.$(OBJ_EXT),$$(TMP_SOURCES))
+$(foreach x,$(TMP_OBJS),
+$(LIB)/$(notdir $(x)): $(x)
+	cp $$< $$@
+
+)
+
+endef
+
+#
+# (end of group definition procs)
+#
+
+.PHONY : default
+default: all
+
+.PHONY : install
+install: all
+	if ( ls $(LIB)/*.$(LIB_EXT) > /dev/null 2>&1 ) ; \
+		then  $(INSTALL) -d -m 755 $(libdir) \
+			&& $(INSTALL) -m 644 $(LIB)/*.$(LIB_EXT) $(libdir) ; \
+	fi
+	if ( ls $(LIB)/*.$(OBJ_EXT) > /dev/null 2>&1 ) ; \
+		then $(INSTALL) -d -m 755 $(libdir) \
+			&& $(INSTALL) -m 644 $(LIB)/*.$(OBJ_EXT) $(libdir) ; \
+	fi
+	if ( ls $(BIN)/*.$(CMD_EXT) > /dev/null 2>&1 ) ; \
+		then $(INSTALL) -d -m 755 $(bindir) \
+			&& $(INSTALL) -m 755 $(BIN)/*.$(CMD_EXT) $(bindir) ; \
+	fi
+	if ( ls $(SCRIPTS)/* > /dev/null 2>&1 ) ; \
+		then $(INSTALL) -d -m 755 $(bindir) \
+			&& $(INSTALL) -m 755 $(SCRIPTS)/* $(bindir) ; \
+	fi
+	$(INSTALL) -d -m 755 $(includedir)/$(PKGNAME)
+	(cd $(INCLUDE) && tar cf - .) | (cd $(includedir)/$(PKGNAME) && tar xf -)
+	if ( ls -d $(DOC)/$(PKGNAME) > /dev/null 2>&1 ) ; \
+		then $(INSTALL) -d -m 755 $(docdir) \
+			&& ((cd $(DOC) && tar cf - $(PKGNAME)) | (cd $(docdir) && tar xf -)) ; \
+	fi
+	if ( ls -d $(DOC)/man > /dev/null 2>&1 ) ; \
+		then $(INSTALL) -d -m 755 $(mandir) \
+			&& ((cd $(DOC)/man && tar cf - .) | (cd $(mandir) && tar xf -)) ; \
+	fi
+
+.PHONY : clean
+clean:
+	find $(OBJ) -name "*.$(OBJ_EXT)" -delete
+	find $(BIN) -name "*.$(CMD_EXT)" -delete
+	find $(LIB) -name "*.$(LIB_EXT)" -delete
+	find $(LIB) -name "*.$(OBJ_EXT)" -delete
+	touch cleaned
+
+cleaned:
+	touch cleaned
+
+#
+# (end of initialization)
+#
+################################################################################
+

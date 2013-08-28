@@ -1,0 +1,60 @@
+%\usepackage[letterpaper]{geometry}
+\documentclass[10pt]{article}
+
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{balance}
+\usepackage{rotating}
+
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{pgfplotstable}
+
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{subfigure}
+
+\topmargin=-1in % Moves the top of the document 1 inch above the default
+\textheight=8.6in % Total height of the text on the page before text goes on to the next page, this can be increased in a longer letter
+\oddsidemargin=-3pt % Position of the left margin, can be negative or positive if you want more or less room
+\textwidth=6.6in % Total width of the text, increase this if the left margin was decreased and vice-versa
+
+\newcommand{\minisec}[1]{\vspace*{0.05cm}\noindent\textbf{#1.\\}}
+\newcommand{\rquote}[2]{%
+\begin{description}%
+\item[#1]: ``#2''
+\end{description}}
+
+
+\begin{document}
+\setlength{\pdfpagewidth}{8.5in}
+\setlength{\pdfpageheight}{11in}
+
+\begin{center}
+\large\bf Reproducible Results for \\
+``Fast Iterative Graph Computation with Block Updates''
+\end{center}
+
+\begin{figure*}[ht!]
+\input{figs/time_details.tex}
+\caption{Timing details for five application scenarios.}
+\label{fig:timingGrid}
+\end{figure*}
+
+\begin{figure*}[ht]
+  \input{figs/dynamic_inner.tex}
+  \caption{Effect of dynamic inner scheduling with different block level scheduling policies.}
+  \label{fig:dynamicinner}
+\end{figure*}
+
+
+\end{document}
+
+
+
+
+
+
+

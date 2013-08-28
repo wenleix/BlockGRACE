@@ -1,0 +1,344 @@
+\begin{tabular}{c|ccc}
+& Effect of block size & Effect of block strategy & Effect of InSchedule \\
+& (Time vs block size) & (Time vs scheduling policy) & (Time vs
+  max inner iterations) \\
+\\ \hline
+%
+% =====================================================================
+% PPR(Google) 
+%
+\begin{sideways} 
+  \quad\quad 
+  \parbox{18mm}{
+    PPR(Google) \\
+    {\scriptsize (Default BS=100)}
+  }
+\end{sideways} 
+&
+\pgfplotstableread{result/personalpr/blocksize.dat}{\tbltimeaa}
+\begin{tikzpicture}
+  \begin{axis}[
+      ylabel={Run time (s)}, ylabel near ticks,
+      ymin={0},
+      width={0.3\textwidth},
+      height={36mm},
+      legend entries={Static,Eager,Prior},
+      legend columns=-1,
+      legend to name=namedeffect,
+    ]
+    \addplot table[x index=0,y index=1]{\tbltimeaa};
+    \addplot table[x index=0,y index=2]{\tbltimeaa};
+    \addplot table[x index=0,y index=3]{\tbltimeaa};
+    \draw [gray, very thin] 
+    ({axis cs:100,0}|-{rel axis cs:0,0}) -- 
+    ({axis cs:100,0}|-{rel axis cs:0,1});
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/personalpr/strategy.dat}{\tbltimeab}
+\begin{tikzpicture}
+  \begin{axis}[
+      ybar, ymin=0, bar width=6pt,
+      width=0.33\textwidth,
+      height=36mm,
+      xtick=data,
+      xtick align=inside,
+      xticklabels from table={\tbltimeab}{Schedule},
+      enlarge x limits={0.3},
+      legend entries={Vertex,VertexCA,BlockS,BlockCvg},
+      legend columns=2,
+      legend to name=namedb,
+    ]
+    \addplot table [x expr=\coordindex+1,y=Vertex  ] {\tbltimeab};
+    \addplot table [x expr=\coordindex+1,y=VertexCA] {\tbltimeab};
+    \addplot table [x expr=\coordindex+1,y=BlockS  ] {\tbltimeab};
+    \addplot table [x expr=\coordindex+1,y=BlockCvg] {\tbltimeab};
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/personalpr/maxinner.dat}{\tbltimeac}
+\begin{tikzpicture}
+  \begin{axis}[
+      ymin={0},
+      xtick=data,
+      width={0.3\textwidth},
+      height={36mm},
+      %legend entries={Static,StaticCvg,Eager,EagerCvg,Prior,PriorCvg},
+      legend entries={Static,Eager,Prior},
+      legend columns=3,
+      legend to name=namedc,
+    ]
+    \addplot table[x index=0,y=Static   ]{\tbltimeac};
+%    \addplot[blue] table[x index=0,y=StaticCvg]{\tbltimeac};
+    \addplot table[x index=0,y=Eager    ]{\tbltimeac};
+%    \addplot[red]  table[x index=0,y=EagerCvg ]{\tbltimeac};
+    \addplot table[x index=0,y=Prior    ]{\tbltimeac};
+%    \addplot[brown]  table[x index=0,y=PriorCvg ]{\tbltimeac};
+\end{axis}
+\end{tikzpicture} 
+\\
+%
+% =====================================================================
+% PPR(DBLP) 
+%
+
+%\begin{sideways} 
+%  \quad\quad 
+%  \parbox{18mm}{
+%    PPR(DBLP) \\
+%    {\scriptsize (Default BS=100)}
+%  }
+%\end{sideways} 
+%&
+%\pgfplotstableread{figs/jdb32G/data/pagerank/blocksize_dblp.dat}{\tbltimeba}
+%\begin{tikzpicture}
+%  \begin{axis}[
+%      ylabel={Run time (s)}, ylabel near ticks,
+%      ymin={0},
+%      width={0.3\textwidth},
+%      height={36mm},
+%    ]
+%    \addplot table[x index=0,y index=1]{\tbltimeba};
+%    \addplot table[x index=0,y index=2]{\tbltimeba};
+%    \addplot table[x index=0,y index=3]{\tbltimeba};
+%    \draw [gray, very thin]
+%    ({axis cs:100,0}|-{rel axis cs:0,0}) -- 
+%    ({axis cs:100,0}|-{rel axis cs:0,1});
+%  \end{axis}
+%\end{tikzpicture} 
+%&
+%\pgfplotstableread{figs/jdb32G/data/pagerank/breakdown_dblp.dat}{\tbltimebb}
+%\begin{tikzpicture}
+%  \begin{axis}[
+%      ybar, ymin=0, bar width=6pt,
+%      width=0.33\textwidth,
+%      height=36mm,
+%      xtick=data,
+%      xtick align=inside,
+%      xticklabels from table={\tbltimebb}{Schedule},
+%      enlarge x limits={0.3}
+%    ]
+%    \addplot table [x expr=\coordindex+1,y=Vertex  ] {\tbltimebb};
+%    \addplot table [x expr=\coordindex+1,y=VertexCA] {\tbltimebb};
+%    \addplot table [x expr=\coordindex+1,y=BlockS  ] {\tbltimebb};
+%    \addplot table [x expr=\coordindex+1,y=BlockCvg] {\tbltimebb};
+%  \end{axis}
+%\end{tikzpicture} 
+%&
+%\pgfplotstableread{figs/jdb32G/data/pagerank/inner_dblp.dat}{\tbltimebc}
+%\begin{tikzpicture}
+%  \begin{axis}[
+%      ymin={0},
+%      xtick=data,
+%      width={0.3\textwidth},
+%      height={36mm}
+%    ]
+%    \addplot table[x index=0,y=Static   ]{\tbltimebc};
+%%    \addplot table[x index=0,y=StaticCvg]{\tbltimebc};
+%    \addplot table[x index=0,y=Eager    ]{\tbltimebc};
+%%    \addplot table[x index=0,y=EagerCvg ]{\tbltimebc};
+%    \addplot table[x index=0,y=Prior    ]{\tbltimebc};
+%%    \addplot table[x index=0,y=PriorCvg ]{\tbltimebc};
+%  \end{axis}
+%\end{tikzpicture} 
+
+
+\\
+%
+% =====================================================================
+% SSSP 
+%
+\begin{sideways} 
+  \quad\quad 
+  \parbox{18mm}{
+    SSSP  \\
+    {\scriptsize (Default BS=100)}
+  }
+\end{sideways} 
+&
+\pgfplotstableread{result/sssp/blocksize.dat}{\tbltimeca}
+\begin{tikzpicture}
+  \begin{axis}[
+      ylabel={Run time (s)}, ylabel near ticks,
+      ymin={0},
+      width={0.3\textwidth},
+      height={36mm},
+    ]
+    \addplot table[x index=0,y index=1]{\tbltimeca};
+    \addplot table[x index=0,y index=2]{\tbltimeca};
+    \addplot table[x index=0,y index=3]{\tbltimeca};
+    \draw [gray, very thin]
+    ({axis cs:100,0}|-{rel axis cs:0,0}) -- 
+    ({axis cs:100,0}|-{rel axis cs:0,1});
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/sssp/strategy.dat}{\tbltimecb}
+\begin{tikzpicture}
+  \begin{axis}[
+      ybar, ymin=0, bar width=6pt,
+      width=0.33\textwidth,
+      height=36mm,
+      xtick=data,
+      xtick align=inside,
+      xticklabels from table={\tbltimecb}{Schedule},
+      enlarge x limits={0.3}
+    ]
+    \addplot table [x expr=\coordindex+1,y=Vertex  ] {\tbltimecb};
+    \addplot table [x expr=\coordindex+1,y=VertexCA] {\tbltimecb};
+    \addplot table [x expr=\coordindex+1,y=BlockS  ] {\tbltimecb};
+    \addplot table [x expr=\coordindex+1,y=BlockCvg] {\tbltimecb};
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/sssp/maxinner.dat}{\tbltimecc}
+\begin{tikzpicture}
+  \begin{axis}[
+      ymin={0},
+      xtick=data,
+      width={0.3\textwidth},
+      height={36mm}
+    ]
+    \addplot table[x index=0,y=Static   ]{\tbltimecc};
+%    \addplot table[x index=0,y=StaticCvg]{\tbltimecc};
+    \addplot table[x index=0,y=Eager    ]{\tbltimecc};
+%    \addplot table[x index=0,y=EagerCvg ]{\tbltimecc};
+    \addplot table[x index=0,y=Prior    ]{\tbltimecc};
+%    \addplot table[x index=0,y=PriorCvg ]{\tbltimecc};
+  \end{axis}
+\end{tikzpicture}
+\\
+%
+% =====================================================================
+% Etch Sim
+%
+\begin{sideways} 
+  \quad\quad 
+  \parbox{18mm}{
+    Etch Sim \\
+    {\scriptsize (Default BS=125)}
+  }
+\end{sideways} 
+&
+\pgfplotstableread{result/eik3d/blocksize.dat}{\tbltimeda}
+\begin{tikzpicture}
+  \begin{axis}[
+      ylabel={Run time (s)}, ylabel near ticks,
+      ymin={0},
+      width={0.3\textwidth},
+      height={36mm},
+    ]
+    \addplot table[x index=0,y index=1]{\tbltimeda};
+    \addplot table[x index=0,y index=2]{\tbltimeda};
+    \addplot table[x index=0,y index=3]{\tbltimeda};
+    \draw [gray, very thin]
+    ({axis cs:125,0}|-{rel axis cs:0,0}) -- 
+    ({axis cs:125,0}|-{rel axis cs:0,1});
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/eik3d/strategy.dat}{\tbltimedb}
+\begin{tikzpicture}
+  \begin{axis}[
+      ybar, ymin=0, bar width=6pt,
+      width=0.33\textwidth,
+      height=36mm,
+      xtick=data,
+      xtick align=inside,
+      xticklabels from table={\tbltimedb}{Schedule},
+      enlarge x limits={0.5}
+    ]
+    \addplot table [x expr=\coordindex+1,y=Vertex  ] {\tbltimedb};
+    \addplot table [x expr=\coordindex+1,y=VertexCA] {\tbltimedb};
+    \addplot table [x expr=\coordindex+1,y=BlockS  ] {\tbltimedb};
+    \addplot table [x expr=\coordindex+1,y=BlockCvg] {\tbltimedb};
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/eik3d/maxinner.dat}{\tbltimedc}
+\begin{tikzpicture}
+  \begin{axis}[
+      ymin={0},
+      xtick=data,
+      width={0.3\textwidth},
+      height={36mm}]
+    \addplot table[x index=0,y=Static   ]{\tbltimedc};
+%    \addplot table[x index=0,y=StaticCvg]{\tbltimedc};
+    \addplot table[x index=0,y=Eager    ]{\tbltimedc};
+%    \addplot table[x index=0,y=EagerCvg ]{\tbltimedc};
+    \addplot table[x index=0,y=Prior    ]{\tbltimedc};
+%    \addplot table[x index=0,y=PriorCvg ]{\tbltimedc};
+  \end{axis}
+\end{tikzpicture}
+\\[1mm] \hline \\[1mm]
+%
+% =====================================================================
+% PPR(UK)
+%
+\begin{sideways} 
+  \quad\quad 
+  \parbox{18mm}{
+    PPR(UK) \\
+    {\scriptsize (Default BS=400)}
+  }
+\end{sideways} 
+&
+\pgfplotstableread{result/ukpr/blocksize.dat}{\tbltimeea}
+\begin{tikzpicture}
+  \begin{axis}[
+      ylabel={Run time (s)}, ylabel near ticks,
+      ymin={0},
+      width={0.3\textwidth},
+      height={36mm},
+    ]
+    \addplot table[x index=0,y index=1]{\tbltimeea};
+    \addplot table[x index=0,y index=2]{\tbltimeea};
+    \addplot table[x index=0,y index=3]{\tbltimeea};
+    \draw [gray, very thin]
+    ({axis cs:400,0}|-{rel axis cs:0,0}) -- 
+    ({axis cs:400,0}|-{rel axis cs:0,1});
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/ukpr/strategy.dat}{\tbltimeeb}
+\begin{tikzpicture}
+  \begin{axis}[
+      %cycle list shift=1,
+      ybar, ymin=0, bar width=6pt,
+      width=0.33\textwidth,
+      height=36mm,
+      xtick=data,
+      xtick align=inside,
+      xticklabels from table={\tbltimeeb}{Schedule},
+      enlarge x limits={0.3}
+    ]
+    \addplot table [x expr=\coordindex+1,y=Vertex  ] {\tbltimeeb};
+    \addplot table [x expr=\coordindex+1,y=VertexCA] {\tbltimeeb};
+    \addplot table [x expr=\coordindex+1,y=BlockS  ] {\tbltimeeb};
+    \addplot table [x expr=\coordindex+1,y=BlockCvg] {\tbltimeeb};
+  \end{axis}
+\end{tikzpicture} 
+&
+\pgfplotstableread{result/ukpr/maxinner.dat}{\tbltimecc}
+\begin{tikzpicture}
+  \begin{axis}[
+      ymin={0},
+      xtick=data,
+      width={0.3\textwidth},
+      height={36mm}
+    ]
+    \addplot table[x index=0,y=Static   ]{\tbltimecc};
+%    \addplot table[x index=0,y=StaticCvg]{\tbltimecc};
+    \addplot table[x index=0,y=Eager    ]{\tbltimecc};
+%    \addplot table[x index=0,y=EagerCvg ]{\tbltimecc};
+    \addplot table[x index=0,y=Prior    ]{\tbltimecc};
+%    \addplot table[x index=0,y=PriorCvg ]{\tbltimecc};
+  \end{axis}
+\end{tikzpicture}
+\\[1mm] \hline \\[1mm]
+%
+% =====================================================================
+% Legends
+%
+& \ref{namedeffect} & \ref{namedb} & \ref{namedc}
+\end{tabular}

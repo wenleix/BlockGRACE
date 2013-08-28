@@ -1,0 +1,8 @@
+This release contains implementations from paper
+"Fast Iterative Graph Computation with Block Updates" (VLDB 2013).
+
+This is a preliminary release for people who are interested in graph processing and reproduce the experimental results.
+It is not a complete release of the GRACE system. Please let us know if you have any questions.
+
+Please refer to http://www.dbxr.org/fast-iterative-graph-computation-with-block-updates to see how to reproduce our experimental results.
+
