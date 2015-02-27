@@ -6,25 +6,25 @@ It is not a complete release of the GRACE system. Please let us know if you have
 
 === Downloading/Installing Cornell DB Utility Libraries ===
 
-	Run
-		git clone https://github.com/FreePeter/DBUtl.git
+    Run
+        git clone https://github.com/FreePeter/DBUtl.git
 
-	to download the Cornell DB Utility Library code.
+    to download the Cornell DB Utility Library code.
 	
 	After downloading the code, run
-		make install
+        make install
 		
-	to install the library into /usr/libaray. Alternatively, you can install it into other place by define the environmental variable CUDB_PREFIX (e.g., declare it in .bashrc)
+    to install the library into /usr/libaray. Alternatively, you can install it into other place by define the environmental variable CUDB_PREFIX (e.g., declare it in .bashrc)
 
 
 === Downloading/Compiling GRACE ===
     Run
-		git clone https://github.com/FreePeter/BlockGRACE.git
+        git clone https://github.com/FreePeter/BlockGRACE.git
 
-	to download the GRACE engine code. We will refer this folder as the "GRACE folder".
+    to download the GRACE engine code. We will refer this folder as the "GRACE folder".
 
     After downloading the code, run
-		./script/compileAll.sh
+        ./script/compileAll.sh
 
     to compile all the 3 applications (personalpr, eik3d, sssp) and generate the corresponding executable files in the exec/ folder.
 
@@ -32,14 +32,14 @@ It is not a complete release of the GRACE system. Please let us know if you have
 === Downloading Data Files  ===
 	
     Download the data from https://drive.google.com/folderview?id=0B91zl_48PQe1RlMzc2lXeTNLSDQ&usp=sharing 
-	Please download them into the data/ folder.
+    Please download them into the data/ folder.
 
-	After downloading them, run the following commands under the data/ folder
+    After downloading them, run the following commands under the data/ folder
         tar xvf *.bz2
 
 === Running Experiments ===
-	Run the following script to reproduce the experiments. The experiments will use 8 worker threads and more than 16G memory. So please run it on a 8-core machine with at least 32G main memory.
-		./script/runall.sh
+    Run the following script to reproduce the experiments. The experiments will use 8 worker threads and more than 16G memory. So please run it on a 8-core machine with at least 32G main memory.
+        ./script/runall.sh
 
 
 
